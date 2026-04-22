@@ -14,8 +14,8 @@ services:
       retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations/0001_create_tasks.up.sql:/docker-entrypoint-initdb.d/001_create_tasks.sql:ro
-      - ./migrations/0002_add_task_recurrences.up.sql:/docker-entrypoint-initdb.d/0002_add_task_recurrences.up.sql:ro
+      - ./migrations/0001_create_tasks.up.sql:/docker-entrypoint-initdb.d/001_create_tasks.up.sql:ro
+      - ./migrations/0002_add_task_recurrences.up.sql:/docker-entrypoint-initdb.d/002_add_task_recurrences.up.sql:ro
 
   app:
     build:
