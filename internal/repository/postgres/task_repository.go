@@ -229,7 +229,9 @@ func createSpawnedTask(ctx context.Context, db dbExecutor, recurrence *taskdomai
 				scheduled_for
 			)
 			VALUES ($1, $2, $3, NOW(), NOW(), $4, $5)
-			ON CONFLICT (recurrence_id, scheduled_for) DO NOTHING
+			ON CONFLICT (recurrence_id, scheduled_for)
+			WHERE recurrence_id IS NOT NULL AND scheduled_for IS NOT NULL
+			DO NOTHING
 			RETURNING id, title, description, status, created_at, updated_at, recurrence_id, scheduled_for
 		)
 		SELECT i.id,
