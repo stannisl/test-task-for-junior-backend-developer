@@ -16,6 +16,12 @@ type taskMutationDTO struct {
 	Config     json.RawMessage       `json:"repetition_config"`
 }
 
+type taskUpdateDTO struct {
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	Status      taskdomain.Status `json:"status"`
+}
+
 type taskDTO struct {
 	ID          int64             `json:"id"`
 	Title       string            `json:"title"`
