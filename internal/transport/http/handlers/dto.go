@@ -10,6 +10,8 @@ type taskMutationDTO struct {
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
 	Status      taskdomain.Status `json:"status"`
+
+	Repetition taskdomain.Repetition `json:"repetition"`
 }
 
 type taskDTO struct {
