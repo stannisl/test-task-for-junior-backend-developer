@@ -15,6 +15,9 @@ type Handler struct {
 func NewHandler() *Handler {
 	spec, err := openAPISpec.ReadFile("openapi.json")
 	if err != nil {
+		// openapi.json is embedded at compile time via //go:embed.
+		// A read error here means the binary was built without the file,
+		// which is a programming error - panic is intentional.
 		panic(err)
 	}
 

@@ -169,6 +169,15 @@
             "type": "string",
             "enum": ["new", "in_progress", "done"],
             "example": "new"
+          },
+          "repetition_type": {
+            "type": "string",
+            "enum": ["daily", "month_days", "specific_dates", "even_month", "odd_month"],
+            "example": "daily"
+          },
+          "repetition_config": {
+            "type": "object",
+            "description": "daily: {interval_days}; month_days: {days:[1..30]}; specific_dates: {dates:[YYYY-MM-DD]}"
           }
         }
       },
@@ -188,6 +197,15 @@
             "type": "string",
             "enum": ["new", "in_progress", "done"],
             "example": "in_progress"
+          },
+          "repetition_type": {
+            "type": "string",
+            "enum": ["daily", "month_days", "specific_dates", "even_month", "odd_month"],
+            "example": "month_days"
+          },
+          "repetition_config": {
+            "type": "object",
+            "description": "Optional for update; recurrence settings are accepted only on task creation"
           }
         }
       },
@@ -204,6 +222,24 @@
             "type": "string",
             "enum": ["new", "in_progress", "done"],
             "example": "new"
+          },
+          "recurrence_id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 12
+          },
+          "scheduled_for": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-04-22"
+          },
+          "repetition_type": {
+            "type": "string",
+            "enum": ["daily", "month_days", "specific_dates", "even_month", "odd_month"],
+            "example": "daily"
+          },
+          "repetition_config": {
+            "type": "object"
           },
           "created_at": {
             "type": "string",

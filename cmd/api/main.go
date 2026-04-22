@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -36,10 +37,13 @@ func main() {
 	defer pool.Close()
 
 	taskRepo := postgresrepo.New(pool)
-	taskUsecase := task.NewService(taskRepo)
+	taskUsecase := task.NewService(taskRepo, logger)
+	spawner := task.NewSpawner(taskUsecase, logger, cfg.SpawnerInterval, cfg.SpawnerBatch)
 	taskHandler := httphandlers.NewTaskHandler(taskUsecase)
 	docsHandler := swaggerdocs.NewHandler()
 	router := transporthttp.NewRouter(taskHandler, docsHandler)
+
+	go spawner.Run(ctx)
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -67,14 +71,18 @@ func main() {
 }
 
 type config struct {
-	HTTPAddr    string
-	DatabaseDSN string
+	HTTPAddr        string
+	DatabaseDSN     string
+	SpawnerInterval time.Duration
+	SpawnerBatch    int
 }
 
 func loadConfig() config {
 	cfg := config{
-		HTTPAddr:    envOrDefault("HTTP_ADDR", ":8080"),
-		DatabaseDSN: envOrDefault("DATABASE_DSN", "postgres://postgres:postgres@localhost:5432/taskservice?sslmode=disable"),
+		HTTPAddr:        envOrDefault("HTTP_ADDR", ":8080"),
+		DatabaseDSN:     envOrDefault("DATABASE_DSN", "postgres://postgres:postgres@localhost:5432/taskservice?sslmode=disable"),
+		SpawnerInterval: envDurationOrDefault("SPAWNER_INTERVAL", time.Minute),
+		SpawnerBatch:    envIntOrDefault("SPAWNER_BATCH", 100),
 	}
 
 	if cfg.DatabaseDSN == "" {
@@ -90,4 +98,32 @@ func envOrDefault(key, fallback string) string {
 	}
 
 	return fallback
+}
+
+func envDurationOrDefault(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := time.ParseDuration(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func envIntOrDefault(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+
+	return parsed
 }

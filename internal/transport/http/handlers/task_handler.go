@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,17 +13,26 @@ import (
 	taskusecase "example.com/taskservice/internal/usecase/task"
 )
 
+type Usecase interface {
+	Create(ctx context.Context, input taskusecase.CreateInput) (*taskdomain.Task, error)
+	GetByID(ctx context.Context, id int64) (*taskdomain.Task, error)
+	Update(ctx context.Context, id int64, input taskusecase.UpdateInput) (*taskdomain.Task, error)
+	Delete(ctx context.Context, id int64) error
+	List(ctx context.Context, input taskdomain.ListInput) ([]taskdomain.Task, error)
+	SpawnDueRecurrences(ctx context.Context, limit int) (int, error)
+}
+
 type TaskHandler struct {
 	usecase taskusecase.Usecase
 }
 
-func NewTaskHandler(usecase taskusecase.Usecase) *TaskHandler {
+func NewTaskHandler(usecase Usecase) *TaskHandler {
 	return &TaskHandler{usecase: usecase}
 }
 
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req taskMutationDTO
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -31,6 +41,8 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
+		Repetition:  req.Repetition,
+		Config:      req.Config,
 	})
 	if err != nil {
 		writeUsecaseError(w, err)
@@ -64,7 +76,7 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req taskMutationDTO
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -73,6 +85,8 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
+		Repetition:  req.Repetition,
+		Config:      req.Config,
 	})
 	if err != nil {
 		writeUsecaseError(w, err)
@@ -98,7 +112,23 @@ func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
-	tasks, err := h.usecase.List(r.Context())
+	limit := parseIntOrDefault(r.URL.Query().Get("limit"), 50)
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	offset := parseIntOrDefault(r.URL.Query().Get("offset"), 0)
+	if offset < 0 {
+		offset = 0
+	}
+
+	tasks, err := h.usecase.List(r.Context(), taskdomain.ListInput{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		writeUsecaseError(w, err)
 		return
@@ -130,7 +160,9 @@ func getIDFromRequest(r *http.Request) (int64, error) {
 	return id, nil
 }
 
-func decodeJSON(r *http.Request, dst any) error {
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 
@@ -139,6 +171,19 @@ func decodeJSON(r *http.Request, dst any) error {
 	}
 
 	return nil
+}
+
+func parseIntOrDefault(raw string, fallback int) int {
+	if raw == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
 }
 
 func writeUsecaseError(w http.ResponseWriter, err error) {
